@@ -1,0 +1,27 @@
+# Build artifacts
+src/*.o
+src/stockfish
+src/.depend
+src/nnue/*.o
+src/imperfect/*.o
+src/syzygy/*.o
+
+# Test files
+/tmp/
+
+# Compiled files
+*.exe
+*.so
+*.dylib
+*.a
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-specific files
+.DS_Store
+Thumbs.db
