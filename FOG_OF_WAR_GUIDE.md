@@ -364,6 +364,152 @@ To stop the search:
 stop
 ```
 
+## FEN Notation with Fog Squares
+
+Fairy-Stockfish supports a special FEN notation for Fog-of-War positions that includes invisible/fog squares. This allows you to input and analyze positions with incomplete information.
+
+### Asterisk (*) Notation for Fog Squares
+
+In Fog-of-War FEN strings, the asterisk character `*` represents an **invisible or fog square** - a square that the current player cannot see. This notation extends standard FEN to represent imperfect information positions.
+
+**Key points:**
+- `*` = invisible/fog square (contents unknown to the player)
+- Regular piece letters (e.g., `P`, `n`, `K`) = visible pieces
+- Numbers (e.g., `3`, `8`) = visible empty squares
+- The engine treats `*` squares as "wall squares" internally
+
+### Complete FEN Examples with Fog Squares
+
+#### Example 1: Starting Position from Black's Perspective
+After White plays e2-e4, Black's fog view shows:
+
+```
+********/********/********/********/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+```
+
+This FEN represents:
+- Black cannot see White's back rank or most of the board (8 asterisks on ranks 8-5)
+- Black can see White's starting pawn and piece positions (ranks 2-1)
+- All other FEN fields (side to move, castling rights, en passant, etc.) are standard
+
+#### Example 2: Mid-Game Position with Mixed Visibility
+
+```
+********/********/2******/Pp*p***1/4P3/4*3/1PPP1PPP/RNBQKBNR w KQkq b6 0 1
+```
+
+This FEN represents:
+- Ranks 8-7 are completely invisible (fog)
+- Rank 6 has 2 visible empty squares, then 6 fog squares
+- Rank 5 shows a White pawn on a5, Black pawn on b5, fog on c5, Black pawn on d5, fog on e5-g5, and 1 empty square
+- Rank 4 shows a White pawn on e4
+- Rank 3 shows fog on e3
+- Ranks 2-1 show White's pieces (fully visible)
+- En passant square b6 is specified (standard FEN notation)
+
+### Inputting FEN Positions for Analysis
+
+To analyze a position with fog squares, use the standard `position fen` command:
+
+**Using UCI Protocol:**
+```
+uci
+setoption name UCI_Variant value fogofwar
+setoption name UCI_FoW value true
+position fen ********/********/2******/Pp*p***1/4P3/4*3/1PPP1PPP/RNBQKBNR w KQkq b6 0 1
+go movetime 5000
+```
+
+**Using XBoard Protocol:**
+```
+xboard
+protover 2
+option VariantPath=variants.ini
+variant fogofwar
+option UCI_FoW=1
+option UCI_IISearch=1
+setboard ********/********/2******/Pp*p***1/4P3/4*3/1PPP1PPP/RNBQKBNR w KQkq b6 0 1
+```
+
+### Getting Fog FEN from a Complete Position
+
+You can convert a complete (perfect information) FEN to a fog FEN showing what one player sees using the `get_fog_fen()` function in the Python bindings:
+
+```python
+import pyffish as sf
+
+# Complete position FEN
+complete_fen = "rnbqkbnr/p1p2ppp/8/Pp1pp3/4P3/8/1PPP1PPP/RNBQKBNR w KQkq b6 0 1"
+
+# Get what White sees (from White's perspective)
+white_fog_fen = sf.get_fog_fen(complete_fen, "fogofwar")
+print("White sees:", white_fog_fen)
+# Output: ********/********/2******/Pp*p***1/4P3/4*3/1PPP1PPP/RNBQKBNR w KQkq b6 0 1
+```
+
+The `get_fog_fen()` function:
+- Takes a complete FEN and variant name as input
+- Returns a FEN with `*` characters marking squares invisible to the current player
+- Visibility is computed based on:
+  - Squares occupied by the player's pieces
+  - Squares the player's pieces can move to or attack
+  - Special fog-of-war rules (pawn diagonal vision, blocking, etc.)
+
+### Visibility Rules and Attacked Squares
+
+**Important:** You do **not** need to manually specify which squares are attacked by the opponent. The engine automatically computes visibility based on piece positions and fog-of-war rules:
+
+1. **Visible squares** (shown as pieces or empty):
+   - Squares occupied by your own pieces
+   - Squares your pieces can move to
+   - Squares your pieces can attack
+   - Empty squares along piece attack paths (until blocked)
+
+2. **Invisible squares** (shown as `*`):
+   - All other squares on the board
+   - Opponent pieces in fog (unknown pieces)
+   - Empty squares you cannot see
+
+3. **Automatic computation:**
+   - The engine computes which squares each player can see
+   - When you input a FEN with `*`, the engine knows those squares are unknown
+   - When analyzing, the engine considers all possible piece arrangements in fog squares
+   - Attacked squares are determined by the game rules and visible piece positions
+
+### Special Cases
+
+#### Pawn Diagonal Vision
+Pawns reveal their diagonal attack squares even if empty:
+```python
+fen = "8/8/8/8/3P4/8/8/K6k w - - 0 1"
+fog_fen = sf.get_fog_fen(fen, "fogofwar")
+# The pawn on d4 reveals c5 and e5 (diagonals) even though they're empty
+```
+
+#### Blocked Pieces
+Pieces can see the first blocking piece but not squares beyond:
+```python
+fen = "8/8/8/3p4/3R4/8/8/K6k w - - 0 1"
+fog_fen = sf.get_fog_fen(fen, "fogofwar")
+# The rook on d4 sees the pawn on d5 but not d6, d7, d8
+```
+
+#### En Passant Visibility
+The en passant square is visible if you have a pawn that can capture it:
+```python
+fen = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1"
+fog_fen = sf.get_fog_fen(fen, "fogofwar")
+# The e5 pawn reveals the d6 en passant square
+```
+
+### Use Cases for FEN with Fog Squares
+
+1. **Position Analysis:** Input a specific fog situation to analyze the best moves
+2. **Game State Reconstruction:** Recreate a game position from a player's perspective
+3. **Testing:** Create test positions with specific visibility configurations
+4. **Teaching:** Demonstrate fog-of-war concepts with concrete examples
+5. **Debugging:** Verify the engine's visibility computation for edge cases
+
 ## Viewing the Fog-of-War Board State
 
 The engine internally tracks what each player can see. When making moves via UCI, the engine automatically:
