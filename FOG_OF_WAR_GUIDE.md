@@ -48,27 +48,48 @@ go movetime 1000
 xboard
 ```
 
-2. Select the variant:
+2. Send protocol version:
+```
+protover 2
+```
+
+3. (Optional) Load variants if using fogofwar variant:
+```
+option VariantPath=variants.ini
+```
+
+4. Select the variant:
 ```
 variant fogofwar
 ```
 
-3. (Optional) Display the board:
+5. (Optional) Enable FoW Obscuro-style search:
+```
+option UCI_FoW=1
+option UCI_IISearch=1
+option UCI_FoW_TimeMs=5000
+```
+
+6. Start a new game:
+```
+new
+```
+
+7. (Optional) Display the board:
 ```
 d
 ```
 
-4. Make your first move:
+8. Make your first move:
 ```
 e2e4
 ```
 
-5. Ask the engine to play:
-```
-go
-```
+9. The engine will automatically reply with its move.
 
-6. Continue playing by making moves. The engine will automatically reply after the first `go` command.
+10. Continue playing by making moves. The engine will respond after each move.
+
+**Note:** All FoW configuration options are available in XBoard protocol via the `option NAME=VALUE` command. See the "FoW Configuration Options" section below for details.
 
 ## Advanced: Obscuro-Style Imperfect Information Search
 
@@ -94,60 +115,117 @@ go movetime 5000
 
 ### FoW Configuration Options
 
-The following UCI options control the Obscuro search behavior:
+The following UCI options control the Obscuro search behavior. These options can be set via UCI protocol using `setoption name NAME value VALUE` or via XBoard/CECP protocol using `option NAME=VALUE`.
 
 #### `UCI_FoW` (default: false)
 Enable Fog-of-War search mode. Must be set to `true` to use imperfect information search.
+
+UCI:
 ```
 setoption name UCI_FoW value true
 ```
 
+XBoard:
+```
+option UCI_FoW=1
+```
+
 #### `UCI_IISearch` (default: true)
 Enable Imperfect Information Search. When true, uses the full Obscuro algorithm. When false, uses simplified search.
+
+UCI:
 ```
 setoption name UCI_IISearch value true
 ```
 
+XBoard:
+```
+option UCI_IISearch=1
+```
+
 #### `UCI_MinInfosetSize` (default: 256, range: 1-10000)
 Minimum number of nodes in an information set before expansion. Larger values create bigger subgames, improving solution quality but increasing computation time.
+
+UCI:
 ```
 setoption name UCI_MinInfosetSize value 256
 ```
 
+XBoard:
+```
+option UCI_MinInfosetSize=256
+```
+
 #### `UCI_ExpansionThreads` (default: 2, range: 1-16)
 Number of threads for GT-CFR expansion (PUCT-based game tree exploration). More threads explore more branches in parallel.
+
+UCI:
 ```
 setoption name UCI_ExpansionThreads value 2
 ```
 
+XBoard:
+```
+option UCI_ExpansionThreads=2
+```
+
 #### `UCI_CFRThreads` (default: 1, range: 1-8)
 Number of threads for CFR solving. Typically 1 is sufficient since CFR is memory-bound.
+
+UCI:
 ```
 setoption name UCI_CFRThreads value 1
 ```
 
+XBoard:
+```
+option UCI_CFRThreads=1
+```
+
 #### `UCI_PurifySupport` (default: 3, range: 1-10)
 Maximum support for action purification (max number of actions to consider). Lower values force more deterministic play, higher values allow more mixed strategies.
+
+UCI:
 ```
 setoption name UCI_PurifySupport value 3
 ```
 
+XBoard:
+```
+option UCI_PurifySupport=3
+```
+
 #### `UCI_PUCT_C` (default: 100, range: 1-1000)
 Exploration constant for PUCT selection in GT-CFR. Higher values encourage more exploration, lower values focus on exploitation.
+
+UCI:
 ```
 setoption name UCI_PUCT_C value 100
 ```
 
+XBoard:
+```
+option UCI_PUCT_C=100
+```
+
 #### `UCI_FoW_TimeMs` (default: 5000, range: 100-600000)
 Time budget in milliseconds for FoW search. The planner will use approximately this much time to compute strategies before selecting an action.
+
+UCI:
 ```
 setoption name UCI_FoW_TimeMs value 5000
 ```
 
+XBoard:
+```
+option UCI_FoW_TimeMs=5000
+```
+
 ### Example: Full Configuration
 
-Here's a complete example configuring all FoW options for strong play:
+Here's a complete example configuring all FoW options for strong play.
 
+**Using UCI:**
 ```
 uci
 setoption name UCI_Variant value fogofwar
@@ -163,27 +241,72 @@ position startpos
 go
 ```
 
+**Using XBoard:**
+```
+xboard
+protover 2
+option VariantPath=variants.ini
+variant fogofwar
+option UCI_FoW=1
+option UCI_IISearch=1
+option UCI_MinInfosetSize=512
+option UCI_ExpansionThreads=4
+option UCI_CFRThreads=1
+option UCI_PurifySupport=3
+option UCI_PUCT_C=100
+option UCI_FoW_TimeMs=10000
+new
+e2e4
+```
+
 ### Tuning for Different Scenarios
 
 **Fast play (weaker but quick)**:
+
+UCI:
 ```
 setoption name UCI_MinInfosetSize value 128
 setoption name UCI_ExpansionThreads value 1
 setoption name UCI_FoW_TimeMs value 1000
 ```
 
+XBoard:
+```
+option UCI_MinInfosetSize=128
+option UCI_ExpansionThreads=1
+option UCI_FoW_TimeMs=1000
+```
+
 **Strong play (slower but better)**:
+
+UCI:
 ```
 setoption name UCI_MinInfosetSize value 1024
 setoption name UCI_ExpansionThreads value 8
 setoption name UCI_FoW_TimeMs value 30000
 ```
 
+XBoard:
+```
+option UCI_MinInfosetSize=1024
+option UCI_ExpansionThreads=8
+option UCI_FoW_TimeMs=30000
+```
+
 **Blitz/Bullet (very fast)**:
+
+UCI:
 ```
 setoption name UCI_MinInfosetSize value 64
 setoption name UCI_ExpansionThreads value 2
 setoption name UCI_FoW_TimeMs value 500
+```
+
+XBoard:
+```
+option UCI_MinInfosetSize=64
+option UCI_ExpansionThreads=2
+option UCI_FoW_TimeMs=500
 ```
 
 ## Playing Dark Crazyhouse Variants
