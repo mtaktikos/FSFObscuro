@@ -10,6 +10,7 @@ _codeql_detected_source_root
 
 # Test files
 /tmp/
+*.exp
 
 # Compiled files
 *.exe
