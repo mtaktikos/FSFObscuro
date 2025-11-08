@@ -129,5 +129,70 @@ bool is_visible(const Position&, Square s, const VisibilityInfo& vi) {
     return vi.visible & s;
 }
 
+/// compute_attacked_pieces() determines which of our pieces could be under attack
+/// from opponent pieces hidden in fog squares.
+/// 
+/// Strategy: For each of our pieces, check if any fog square could contain
+/// an opponent piece that attacks it. This is conservative - we mark a piece
+/// as "potentially attacked" if there's any fog square from which an opponent
+/// piece could theoretically attack it.
+Bitboard compute_attacked_pieces(const Position& pos, const VisibilityInfo& vi) {
+    Color us = pos.side_to_move();
+    Color them = ~us;
+    Bitboard attackedPieces = 0;
+    Bitboard fogSquares = ~vi.visible & pos.board_bb();
+    
+    // For each of our pieces
+    Bitboard ourPieces = vi.myPieces;
+    while (ourPieces) {
+        Square sq = pop_lsb(ourPieces);
+        
+        // Check if this piece could be attacked from any fog square
+        // We need to consider all piece types the opponent could have
+        
+        // Check for pawn attacks
+        Bitboard pawnAttackers = pawn_attacks_bb(us, sq) & fogSquares;
+        if (pawnAttackers)
+            attackedPieces |= sq;
+        
+        // Check for knight attacks
+        if (pos.variant()->pieceTypes & KNIGHT) {
+            Bitboard knightAttackers = pos.attacks_from(them, KNIGHT, sq) & fogSquares;
+            if (knightAttackers)
+                attackedPieces |= sq;
+        }
+        
+        // Check for bishop/queen attacks
+        if ((pos.variant()->pieceTypes & BISHOP) || (pos.variant()->pieceTypes & QUEEN)) {
+            Bitboard bishopAttackers = pos.attacks_from(them, BISHOP, sq) & fogSquares;
+            if (bishopAttackers)
+                attackedPieces |= sq;
+        }
+        
+        // Check for rook/queen attacks
+        if ((pos.variant()->pieceTypes & ROOK) || (pos.variant()->pieceTypes & QUEEN)) {
+            Bitboard rookAttackers = pos.attacks_from(them, ROOK, sq) & fogSquares;
+            if (rookAttackers)
+                attackedPieces |= sq;
+        }
+        
+        // Check for king attacks
+        if (pos.variant()->pieceTypes & KING) {
+            Bitboard kingAttackers = pos.attacks_from(them, KING, sq) & fogSquares;
+            if (kingAttackers)
+                attackedPieces |= sq;
+        }
+        
+        // For fogofwar variant, the king is actually a "commoner" piece
+        if (pos.variant()->pieceTypes & COMMONER) {
+            Bitboard commonerAttackers = pos.attacks_from(them, COMMONER, sq) & fogSquares;
+            if (commonerAttackers)
+                attackedPieces |= sq;
+        }
+    }
+    
+    return attackedPieces;
+}
+
 } // namespace FogOfWar
 } // namespace Stockfish
