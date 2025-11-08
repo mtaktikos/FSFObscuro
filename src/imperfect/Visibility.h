@@ -58,6 +58,11 @@ Bitboard compute_pawn_vision(const Position& pos, Color us);
 /// compute_piece_vision() computes visibility from non-pawn pieces
 Bitboard compute_piece_vision(const Position& pos, Color us);
 
+/// compute_attacked_pieces() computes which of our pieces could potentially be
+/// attacked by hidden opponent pieces in fog squares.
+/// This is useful for extended FEN notation that marks attacked pieces.
+Bitboard compute_attacked_pieces(const Position& pos, const VisibilityInfo& vi);
+
 } // namespace FogOfWar
 
 } // namespace Stockfish

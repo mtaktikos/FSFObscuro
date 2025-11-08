@@ -368,13 +368,25 @@ stop
 
 Fairy-Stockfish supports a special FEN notation for Fog-of-War positions that includes invisible/fog squares. This allows you to input and analyze positions with incomplete information.
 
-### Asterisk (*) Notation for Fog Squares
+### Extended FEN Notation for Fog of War
 
-In Fog-of-War FEN strings, the asterisk character `*` represents an **invisible or fog square** - a square that the current player cannot see. This notation extends standard FEN to represent imperfect information positions.
+Fairy-Stockfish uses an extended FEN notation to represent Fog-of-War positions:
+
+**Basic notation:**
+- `*` = invisible/fog square (contents unknown to the player)
+- Regular piece letters (e.g., `P`, `n`, `K`) = visible pieces
+- Numbers (e.g., `3`, `8`) = visible empty squares
+
+**Extended notation for attacked pieces:**
+- `P!`, `N!`, `B!`, etc. = piece under attack by hidden opponent pieces
+- `p!`, `n!`, `b!`, etc. = lowercase for black pieces under attack
+
+The `!` marker indicates that a piece is potentially under attack by an opponent piece hidden in fog. This is useful when analyzing positions from online games (like https://dagazproject.github.io/checkmate/dark-chess.htm) where the UI shows which of your pieces are threatened.
 
 **Key points:**
 - `*` = invisible/fog square (contents unknown to the player)
-- Regular piece letters (e.g., `P`, `n`, `K`) = visible pieces
+- `P`, `n`, `K` = visible pieces (not under attack)
+- `P!`, `n!`, `K!` = visible pieces under attack by hidden opponent
 - Numbers (e.g., `3`, `8`) = visible empty squares
 - The engine treats `*` squares as "wall squares" internally
 
@@ -406,6 +418,18 @@ This FEN represents:
 - Rank 3 shows fog on e3
 - Ranks 2-1 show White's pieces (fully visible)
 - En passant square b6 is specified (standard FEN notation)
+
+#### Example 3: Position with Attacked Pieces
+
+```
+********/********/2******/Pp*p***1/4P3/4*3/1PPP!1PPP/RNBQKBNR w KQkq b6 0 1
+```
+
+This FEN represents the same position as Example 2, but with an additional piece of information:
+- The White pawn on f2 is marked with `!` (shown as `P!` in the FEN)
+- This indicates the pawn is potentially under attack by a hidden Black piece in fog
+- This notation is useful when you're playing on a platform that shows threatened pieces
+- You can input this FEN to analyze what to do about the threat
 
 ### Inputting FEN Positions for Analysis
 
@@ -449,15 +473,57 @@ print("White sees:", white_fog_fen)
 
 The `get_fog_fen()` function:
 - Takes a complete FEN and variant name as input
+- Optionally accepts a third parameter `mark_attacked` (default: False)
 - Returns a FEN with `*` characters marking squares invisible to the current player
+- When `mark_attacked=True`, also marks pieces under attack with `!`
 - Visibility is computed based on:
   - Squares occupied by the player's pieces
   - Squares the player's pieces can move to or attack
   - Special fog-of-war rules (pawn diagonal vision, blocking, etc.)
 
+**Example with attacked piece marking:**
+```python
+import pyffish as sf
+
+# Complete position FEN
+complete_fen = "rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR w KQkq - 0 1"
+
+# Get fog FEN with attacked pieces marked
+fog_fen = sf.get_fog_fen(complete_fen, "fogofwar", mark_attacked=True)
+print("Fog FEN with attacks:", fog_fen)
+# May output something like: ********/********/8/8/7P!/8/PPPPPPP1/RNBQKBNR w KQkq - 0 1
+# (if the pawn on h4 is potentially under attack from fog squares)
+```
+
+### Using the Attacked Piece Notation
+
+The `!` marker in FEN notation serves a specific purpose: **communicating information from online game UIs to the engine**.
+
+**Use case:** Some Fog-of-War implementations (like https://dagazproject.github.io/checkmate/dark-chess.htm) display which of your pieces are under attack by showing them brighter or highlighted. This is extra information beyond standard fog-of-war rules. When you want to analyze such a position in Fairy-Stockfish, you can use the `!` marker to tell the engine which pieces are threatened.
+
+**How to use:**
+1. **Input FEN with `!` markers:** When setting up a position from an online game, add `!` after any piece that the game UI shows as attacked
+2. **Parse FEN:** The engine will accept and parse the `!` markers (currently treating them as metadata)
+3. **Generate FEN with `!` markers:** Use `get_fog_fen(..., mark_attacked=True)` in Python to automatically compute and mark attacked pieces
+
+**Example workflow:**
+```
+# You're playing online and see your h2 pawn is highlighted (under attack)
+# The position from your perspective looks like:
+# - You can see ranks 1-2 (your pieces)
+# - Everything else is fog
+# - Your h2 pawn is highlighted as threatened
+
+# You can input this as:
+position fen ********/********/8/8/8/8/PPPPPP!P/RNBQKBNR w KQkq - 0 1
+                                    ^--- h2 pawn marked as attacked
+
+# The engine will parse this and analyze the position
+```
+
 ### Visibility Rules and Attacked Squares
 
-**Important:** You do **not** need to manually specify which squares are attacked by the opponent. The engine automatically computes visibility based on piece positions and fog-of-war rules:
+**Important:** You do **not** need to manually specify which squares are attacked by the opponent in standard analysis. The engine automatically computes visibility based on piece positions and fog-of-war rules:
 
 1. **Visible squares** (shown as pieces or empty):
    - Squares occupied by your own pieces

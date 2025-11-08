@@ -19,6 +19,7 @@
 #include "piece.h"
 #include "variant.h"
 #include "apiutil.h"
+#include "imperfect/Visibility.h"
 
 using namespace Stockfish;
 
@@ -383,21 +384,31 @@ extern "C" PyObject* pyffish_validateFen(PyObject* self, PyObject *args) {
     return Py_BuildValue("i", FEN::validate_fen(std::string(fen), variants.find(std::string(variant))->second, chess960));
 }
 
-// INPUT variant, fen
+// INPUT variant, fen, mark_attacked (optional)
 extern "C" PyObject* pyffish_getFogFEN(PyObject* self, PyObject *args) {
     PyObject* moveList = PyList_New(0);
     Position pos;
     const char *fen, *variant;
+    int mark_attacked = false;
 
     int chess960 = false, sfen = false, showPromoted = false, countStarted = 0;
-    if (!PyArg_ParseTuple(args, "ss|p", &fen, &variant, &chess960)) {
+    if (!PyArg_ParseTuple(args, "ss|pp", &fen, &variant, &chess960, &mark_attacked)) {
         return NULL;
     }
     StateListPtr states(new std::deque<StateInfo>(1));
     buildPosition(pos, states, variant, fen, moveList, chess960);
 
+    Bitboard fogArea = pos.fog_area();
+    Bitboard attackedPieces = 0;
+    
+    // Compute attacked pieces if requested
+    if (mark_attacked) {
+        FogOfWar::VisibilityInfo vi = FogOfWar::compute_visibility(pos);
+        attackedPieces = FogOfWar::compute_attacked_pieces(pos, vi);
+    }
+
     Py_XDECREF(moveList);
-    return Py_BuildValue("s", pos.fen(sfen, showPromoted, countStarted, "-", pos.fog_area()).c_str());
+    return Py_BuildValue("s", pos.fen(sfen, showPromoted, countStarted, "-", fogArea, attackedPieces).c_str());
 }
 
 static PyMethodDef PyFFishMethods[] = {

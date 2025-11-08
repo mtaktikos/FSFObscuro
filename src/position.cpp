@@ -315,9 +315,17 @@ Position& Position::set(const Variant* v, const string& fenStr, bool isChess960,
 
       else if ((idx = piece_to_char().find(token)) != string::npos || (idx = piece_to_char_synonyms().find(token)) != string::npos)
       {
+          bool isPromoted = false;
           if (ss.peek() == '~')
+          {
               ss >> token;
-          put_piece(Piece(idx), sq, token == '~');
+              isPromoted = true;
+          }
+          // Handle attacked piece marker '!' (for Fog of War notation)
+          // We consume it but don't need to store it, as it's just metadata
+          if (ss.peek() == '!')
+              ss >> token;
+          put_piece(Piece(idx), sq, isPromoted);
           ++sq;
       }
 
@@ -689,7 +697,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
 /// Position::fen() returns a FEN representation of the position. In case of
 /// Chess960 the Shredder-FEN notation is used. This is mainly a debugging function.
 
-string Position::fen(bool sfen, bool showPromoted, int countStarted, std::string holdings, Bitboard fogArea) const {
+string Position::fen(bool sfen, bool showPromoted, int countStarted, std::string holdings, Bitboard fogArea, Bitboard attackedPieces) const {
 
   int emptyCnt;
   std::ostringstream ss;
@@ -706,18 +714,23 @@ string Position::fen(bool sfen, bool showPromoted, int countStarted, std::string
 
           if (f <= max_file())
           {
-              if (empty(make_square(f, r)) || fogArea & make_square(f, r))
-                  // Wall square
+              Square sq = make_square(f, r);
+              if (empty(sq) || fogArea & sq)
+                  // Wall square or fog square
                   ss << "*";
-              else if (unpromoted_piece_on(make_square(f, r)))
+              else if (unpromoted_piece_on(sq))
                   // Promoted shogi pieces, e.g., +r for dragon
-                  ss << "+" << piece_to_char()[unpromoted_piece_on(make_square(f, r))];
+                  ss << "+" << piece_to_char()[unpromoted_piece_on(sq)];
               else
               {
-                  ss << piece_to_char()[piece_on(make_square(f, r))];
+                  ss << piece_to_char()[piece_on(sq)];
+
+                  // Mark pieces under attack by hidden opponent pieces
+                  if (attackedPieces & sq)
+                      ss << "!";
 
                   // Set promoted pieces
-                  if (((captures_to_hand() && !drop_loop()) || two_boards() ||  showPromoted) && is_promoted(make_square(f, r)))
+                  if (((captures_to_hand() && !drop_loop()) || two_boards() ||  showPromoted) && is_promoted(sq))
                       ss << "~";
               }
           }
