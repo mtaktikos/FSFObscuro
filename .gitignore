@@ -17,6 +17,14 @@ _codeql_detected_source_root
 *.dylib
 *.a
 
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+dist/
+*.egg-info/
+*.egg
+
 # IDE and editor files
 .vscode/
 .idea/
