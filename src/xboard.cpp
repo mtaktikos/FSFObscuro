@@ -27,6 +27,7 @@
 #include "types.h"
 #include "uci.h"
 #include "xboard.h"
+#include "imperfect/Planner.h"
 
 namespace Stockfish {
 
@@ -50,7 +51,39 @@ namespace XBoard {
 
     searchLimits.startTime = now(); // As early as possible!
 
-    Threads.start_thinking(pos, states, searchLimits, ponder);
+    // Check if Fog-of-War mode is enabled
+    if (Options["UCI_FoW"] && Options["UCI_IISearch"] && !ponder) {
+        // Use FoW Obscuro-style planner instead of normal search
+        FogOfWar::Planner planner;
+        FogOfWar::PlannerConfig config;
+
+        config.minInfosetSize = Options["UCI_MinInfosetSize"];
+        config.numExpanderThreads = Options["UCI_ExpansionThreads"];
+        config.numSolverThreads = Options["UCI_CFRThreads"];
+        config.maxSupport = Options["UCI_PurifySupport"];
+        config.puctConstant = float(int(Options["UCI_PUCT_C"])) / 100.0f;
+        config.maxTimeMs = Options["UCI_FoW_TimeMs"];
+
+        Move bestMove = planner.plan_move(pos, config);
+
+        // If FoW planner returns a valid move, use it
+        if (bestMove != MOVE_NONE) {
+            // Output best move in XBoard format
+            sync_cout << "move " << UCI::move(pos, bestMove) << sync_endl;
+
+            // Apply the move to maintain game state if moveAfterSearch is true
+            if (moveAfterSearch) {
+                do_move(bestMove);
+                moveAfterSearch = false;
+            }
+        } else {
+            // Fall back to normal search if planner fails
+            Threads.start_thinking(pos, states, searchLimits, ponder);
+        }
+    } else {
+        // Normal perfect-information search
+        Threads.start_thinking(pos, states, searchLimits, ponder);
+    }
   }
 
   // ponder() starts a ponder search
