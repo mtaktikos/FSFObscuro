@@ -385,15 +385,6 @@ void StateMachine::process_command(std::string token, std::istringstream& is) {
       is.get();
       std::getline(is, name, '=');
       std::getline(is, value);
-      
-      // Map XBoard FoW option names back to UCI names
-      if (name == "MinInfosetSize") name = "UCI_MinInfosetSize";
-      else if (name == "ExpansionThreads") name = "UCI_ExpansionThreads";
-      else if (name == "CFRThreads") name = "UCI_CFRThreads";
-      else if (name == "PurifySupport") name = "UCI_PurifySupport";
-      else if (name == "PUCT_C") name = "UCI_PUCT_C";
-      else if (name == "FoW_TimeMs") name = "UCI_FoW_TimeMs";
-      
       if (Options.count(name))
       {
           if (Options[name].get_type() == "check")

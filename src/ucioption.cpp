@@ -211,9 +211,8 @@ void init(OptionsMap& o) {
   o["usemillisec"]           << Option(true); // time unit for UCCI
 
   // Fog-of-War (FoW) Obscuro-style search options
-  // UCI_FoW and UCI_IISearch are hardcoded to true and not changeable
-  o["UCI_FoW"]               << Option(true);   // Always enable FoW mode (hardcoded)
-  o["UCI_IISearch"]          << Option(true);   // Always enable imperfect information search (hardcoded)
+  o["UCI_FoW"]               << Option(false);  // Enable FoW mode
+  o["UCI_IISearch"]          << Option(true);   // Enable imperfect information search
   o["UCI_MinInfosetSize"]    << Option(256, 1, 10000);  // Sample size for root infoset
   o["UCI_ExpansionThreads"]  << Option(2, 1, 16);       // Number of expander threads
   o["UCI_CFRThreads"]        << Option(1, 1, 8);        // Number of CFR solver threads
@@ -222,22 +221,6 @@ void init(OptionsMap& o) {
   o["UCI_FoW_TimeMs"]        << Option(5000, 100, 600000); // Time budget per move in ms
 }
 
-
-/// get_xboard_option_name() returns the XBoard-specific option name
-/// For FoW options, removes the "UCI_" prefix in XBoard mode
-
-std::string get_xboard_option_name(const std::string& uciName) {
-  // Map UCI FoW option names to XBoard names (remove UCI_ prefix)
-  if (uciName == "UCI_MinInfosetSize") return "MinInfosetSize";
-  if (uciName == "UCI_ExpansionThreads") return "ExpansionThreads";
-  if (uciName == "UCI_CFRThreads") return "CFRThreads";
-  if (uciName == "UCI_PurifySupport") return "PurifySupport";
-  if (uciName == "UCI_PUCT_C") return "PUCT_C";
-  if (uciName == "UCI_FoW_TimeMs") return "FoW_TimeMs";
-  
-  // Return original name for all other options
-  return uciName;
-}
 
 /// operator<<() is used to print all the options default values in chronological
 /// insertion order (the idx field) and in the format defined by the UCI protocol.
@@ -248,13 +231,10 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
   {
       for (size_t idx = 0; idx < om.size(); ++idx)
           for (const auto& it : om)
-              // Skip UCI_Variant, Threads, Hash, and hardcoded FoW options (UCI_FoW, UCI_IISearch)
-              if (it.second.idx == idx && it.first != "UCI_Variant" && it.first != "Threads" && it.first != "Hash"
-                  && it.first != "UCI_FoW" && it.first != "UCI_IISearch")
+              if (it.second.idx == idx && it.first != "UCI_Variant" && it.first != "Threads" && it.first != "Hash")
               {
                   const Option& o = it.second;
-                  std::string optionName = get_xboard_option_name(it.first);
-                  os << "\nfeature option=\"" << optionName << " -" << o.type;
+                  os << "\nfeature option=\"" << it.first << " -" << o.type;
 
                   if (o.type == "string" || o.type == "combo")
                       os << " " << o.defaultValue;
@@ -280,8 +260,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
   for (size_t idx = 0; idx < om.size(); ++idx)
       for (const auto& it : om)
-          // Skip hardcoded FoW options (UCI_FoW, UCI_IISearch) in all protocols
-          if (it.second.idx == idx && it.first != "UCI_FoW" && it.first != "UCI_IISearch")
+          if (it.second.idx == idx)
           {
               const Option& o = it.second;
               // UCI dialects do not allow spaces
