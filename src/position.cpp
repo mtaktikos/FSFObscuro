@@ -305,11 +305,16 @@ Position& Position::set(const Variant* v, const string& fenStr, bool isChess960,
       else if (!is_ok(sq) || file_of(sq) > max_file() || rank_of(sq) > r)
           continue;
 
-      // Wall square
+      // Wall square (only if variant has walling enabled)
+      // For fog of war variants, asterisks represent hidden squares, not walls
       else if (token == '*')
       {
-          st->wallSquares |= sq;
-          byTypeBB[ALL_PIECES] |= sq;
+          if (v->wallingRule != NO_WALLING)
+          {
+              st->wallSquares |= sq;
+              byTypeBB[ALL_PIECES] |= sq;
+          }
+          // For non-walling variants (e.g., fog of war), asterisks are just empty squares
           ++sq;
       }
 
