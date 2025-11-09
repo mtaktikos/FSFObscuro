@@ -19,6 +19,7 @@
 #include "Planner.h"
 #include "../position.h"
 #include "../misc.h"
+#include "../movegen.h"
 #include <chrono>
 #include <iostream>
 
@@ -69,7 +70,25 @@ void Planner::construct_subgame(const Position& pos) {
 
     // Step 3: Construct subgame (2-KLUSS)
     subgame = std::make_unique<Subgame>();
-    subgame->construct(sampledStateFens, config.minInfosetSize);
+    subgame->construct(sampledStateFens, pos.variant(), config.minInfosetSize);
+
+    // Step 3.5: Initialize root infoset with legal moves from current position
+    // This ensures we have actions available even if expansion doesn't complete
+    InfosetNode* rootInfoset = subgame->get_infoset(0, pos.side_to_move());
+    if (rootInfoset && rootInfoset->actions.empty()) {
+        for (const auto& m : MoveList<LEGAL>(pos)) {
+            rootInfoset->actions.push_back(m);
+        }
+        if (!rootInfoset->actions.empty()) {
+            size_t numActions = rootInfoset->actions.size();
+            rootInfoset->regrets.resize(numActions, 0.0f);
+            rootInfoset->strategy.resize(numActions, 1.0f / numActions); // Uniform strategy
+            rootInfoset->cumulativeStrategy.resize(numActions, 0.0f);
+            rootInfoset->visitCounts.resize(numActions, 0);
+            rootInfoset->qValues.resize(numActions, 0.0f);
+            rootInfoset->variances.resize(numActions, 2.0f);
+        }
+    }
 
     // Step 4: Initialize Resolve and Maxmargin gadgets
     // The gadget switching is handled by the solver (Figure 10, lines 6-13)
@@ -147,13 +166,14 @@ Move Planner::plan_move(Position& pos, const PlannerConfig& cfg) {
     construct_subgame(pos);
 
     // Step 3: Launch threads (Figure 8, lines 8-10)
-    launch_threads();
+    // Temporarily disabled to isolate crash
+    // launch_threads();
 
     // Step 4: Run until time limit
-    std::this_thread::sleep_for(std::chrono::milliseconds(config.maxTimeMs));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(config.maxTimeMs));
 
     // Step 5: Stop threads (expanders first, then solver)
-    stop_threads();
+    // stop_threads();
 
     // Step 6: Collect statistics
     auto endTime = std::chrono::steady_clock::now();
