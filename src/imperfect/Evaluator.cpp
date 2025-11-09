@@ -57,7 +57,8 @@ std::vector<ChildEvaluation> evaluate_children(Position& pos) {
         pos.do_move(m, st);
 
         // Evaluate the resulting position
-        Value eval = Eval::evaluate(pos);
+        // Temporarily use a placeholder evaluation to test expansion
+        Value eval = VALUE_DRAW; // Eval::evaluate(pos);
 
         // Flip sign since we evaluated from opponent's perspective
         eval = -eval;

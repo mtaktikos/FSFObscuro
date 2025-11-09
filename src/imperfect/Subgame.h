@@ -93,11 +93,12 @@ enum class GadgetType {
 class Subgame {
 public:
     Subgame() : rootNode(nullptr), currentGadget(GadgetType::NONE),
-                resolveEntered(false), nodeIdCounter(0) {}
+                resolveEntered(false), nodeIdCounter(0), variant(nullptr) {}
 
     /// construct() builds the subgame from sampled states (Figure 9)
     /// Takes FEN strings representing sampled positions
     void construct(const std::vector<std::string>& sampledStateFens,
+                   const Variant* v,
                    int minInfosetSize = 256);
 
     /// expand_node() expands a leaf node by generating children
@@ -124,6 +125,7 @@ public:
     const GameTreeNode* root() const { return rootNode.get(); }
     size_t num_infosets() const { return infosets.size(); }
     std::unordered_map<SequenceId, InfosetNode>& get_infosets() { return infosets; }
+    const Variant* get_variant() const { return variant; }
 
     /// Statistics
     size_t count_nodes() const;
@@ -135,6 +137,7 @@ private:
     GadgetType currentGadget;
     bool resolveEntered;
     std::atomic<NodeId> nodeIdCounter;
+    const Variant* variant;
 
     /// Helper: Generate sequence ID from move sequence
     SequenceId compute_sequence_id(const std::vector<Move>& moves);

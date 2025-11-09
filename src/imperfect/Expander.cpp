@@ -215,14 +215,31 @@ bool Expander::run_expansion_step(Subgame& subgame) {
     if (!leaf || leaf->expanded)
         return false;
 
-    // Expand the leaf
-    // TODO: Parse leaf->stateFen to create Position
-    // For now, skip actual expansion (placeholder)
-    // Position pos = ...parse leaf->stateFen...
-    // expand_leaf(leaf, subgame, pos);
+    // Get variant from subgame
+    const Variant* variant = subgame.get_variant();
+    if (!variant)
+    {
+        // Can't expand without variant
+        leaf->expanded = true;
+        return false;
+    }
 
-    // Mark as expanded to avoid infinite loop
-    leaf->expanded = true;
+    // Check if the leaf has a FEN, if not it must be the root
+    if (leaf->stateFen.empty())
+    {
+        // This shouldn't happen if build_tree_from_samples worked correctly
+        leaf->expanded = true;
+        return false;
+    }
+
+    // Create Position from FEN with persistent StateInfo
+    // Note: StateInfo must outlive the Position usage in expand_leaf
+    StateInfo st;
+    Position pos;
+    pos.set(variant, leaf->stateFen, false, &st, nullptr);
+
+    // Expand the leaf
+    expand_leaf(leaf, subgame, pos);
 
     // Alternate exploring side (Appendix B.3.3)
     alternate_exploring_side();
