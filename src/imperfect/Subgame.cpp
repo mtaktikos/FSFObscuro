@@ -54,12 +54,14 @@ InfosetNode* Subgame::get_infoset(SequenceId seqId, Color player) {
 }
 
 void Subgame::construct(const std::vector<std::string>& sampledStateFens,
+                        const Variant* v,
                         int minInfosetSize) {
     // Clear existing tree
     rootNode = std::make_unique<GameTreeNode>();
     infosets.clear();
     nodeIdCounter = 0;
     resolveEntered = false;
+    variant = v;
 
     // Build tree from sampled states
     build_tree_from_samples(sampledStateFens);
@@ -74,16 +76,25 @@ void Subgame::build_tree_from_samples(const std::vector<std::string>& sampledSta
 
     // Initialize root node with first sampled state
     rootNode->nodeId = nodeIdCounter++;
-    // Store FEN instead of Position
-    // TODO: Parse FEN when needed for move generation
+    rootNode->stateFen = sampledStateFens[0]; // Store the FEN
     rootNode->ourSequence = 0;
     rootNode->theirSequence = 0;
     rootNode->depth = 0;
     rootNode->inKLUSS = true;
 
-    // For now, create a simple root infoset without parsing FENs
-    // TODO: Parse FENs to determine correct player and actions
-    InfosetNode* rootInfoset = get_infoset(0, WHITE); // Default to WHITE
+    // Parse FEN to determine the side to move for root infoset
+    // This is a simplified approach - we just extract from the FEN
+    Color rootPlayer = WHITE; // Default
+    if (!sampledStateFens[0].empty()) {
+        // FEN format: "position w/b ..." - side to move is after first space
+        size_t spacePos = sampledStateFens[0].find(' ');
+        if (spacePos != std::string::npos && spacePos + 1 < sampledStateFens[0].size()) {
+            char sideChar = sampledStateFens[0][spacePos + 1];
+            rootPlayer = (sideChar == 'b' || sideChar == 'B') ? BLACK : WHITE;
+        }
+    }
+
+    InfosetNode* rootInfoset = get_infoset(0, rootPlayer);
 
     // Initialize with empty actions (will be filled during expansion)
     rootInfoset->regrets.clear();

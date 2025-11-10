@@ -637,6 +637,8 @@ From the Obscuro paper (Appendix A), the key fog-of-war rules are:
 
 **FoW search not working**: Verify both `UCI_FoW value true` and `UCI_IISearch value true` are set
 
+**Engine claims "White wins" from start position**: This was a bug in earlier versions where extinction rules incorrectly applied to fog positions. Fixed in commit cd7029c by removing extinction rules from FoW variants (since you can't verify opponent's commoner is missing when it's hidden in fog)
+
 ## References
 
 - Obscuro paper: "Optimal play in imperfect-information games using counterfactual regret minimization"
